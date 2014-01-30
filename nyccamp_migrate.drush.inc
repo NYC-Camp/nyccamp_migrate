@@ -4,49 +4,85 @@
  * Implementation of hook_drush_command().
  */
 function nyccamp_migrate_drush_command() {
-  return array(
-    'nyccamp-migrate-user-fields' => array(
-      'description' => 'Migrates user field data',
-      'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-      'aliases' => array('migrate-users'),
-      'options' => array(
-        'limit' => 'How many users to update',
-        // 'source' => 'The fieldname source.',
-        // 'dest' => 'The fieldname destination.', // These should actually be arguments
-      ),
-      'examples' => array(
-        // 'drush migrate-users --source="field_profile_org_bio" dest="field_bio"' => '',
-      ),
-    ),
-  );
+    //~ print("Entered nyccamp_migrate_drush_command()\n");
+    $items = array(
+        'copy-bio' => array(
+            'description' => 'Copies bio user field data',
+            'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+            'options' => array(
+                'src' => 'The fieldname source.',
+                'dst' => 'The fieldname destination.',
+                'limit' => 'How many users to update.',
+            ),
+            'examples' => array(
+                'drush copy-bio --src="field_profile_bio" --dst="field_bio" ' 
+                    => 'Copies data from field_profile_bio to field_bio',
+            ),
+            'aliases' => array('cbio'),
+        ),
+    );
+
+    return $items;
+}
+
+/**
+ * Implements drush_hook_COMMAND_validate()
+ */
+function drush_nyccamp_migrate_copy_bio_validate() {
+    $okay = TRUE;
+    
+    $src = trim(drush_get_option('src', ''));
+    if(empty($src)) {
+        $okay = drush_set_error('INVALID SRC', dt('--src option is missing or empty'));
+    }
+    
+    $dst = trim(drush_get_option('dst', ''));
+    if(empty($dst)) {
+        $okay = drush_set_error('INVALID DST', dt('--dst option is missing or empty'));
+    }
+    
+    $limit = intval(drush_get_option('limit', 5000));
+    if($limit <= 0 ) {
+        $okay = drush_set_error('INVALID LIMIT', dt('--limit option must be positive integer'));
+    }
+    
+    return $okay;
 }
 
 
-function drush_nyccamp_migrate_user_fields() {
-  $limit = drush_get_option('limit', 5000);
+function drush_nyccamp_migrate_copy_bio() {
+    $src = trim(drush_get_option('src', ''));
+    $dst = trim(drush_get_option('dst', ''));
+    $limit = intval(drush_get_option('limit', 5000));
 
-  // Example:
-  // field_profile_org_bio
-  // field_bio
+    $query = new EntityFieldQuery();
+    
+    print("Leaving drush_nyccamp_migrate_user_fields()\n");
 
-  // Has the following tables:
-  // field_data_field_profile_org_bio
-  // field_revision_field_profile_org_bio
+    return;
 
-  // field_data_field_bio
-  // field_revision_field_bio
+    // Example:
+    // field_profile_org_bio
+    // field_bio
 
-  // Other tables to consider:
-  // field_config
-  // field_config_instance
+    // Has the following tables:
+    // field_data_field_profile_org_bio
+    // field_revision_field_profile_org_bio
 
-  // First Step to moving data out of profile_org_bio into field_bio:
-  // Get all of the user ids with a value in profile_org_bio:
-  $query = new EntityFieldQuery();
-  $result = $query->entityCondition('entity_type', 'user')
-    ->entityCondition('bundle', 'user')
-    ->fieldCondition('field_profile_org_bio', 'value', '', '!=')
-    ->range(0, $limit)->execute();
+    // field_data_field_bio
+    // field_revision_field_bio
+
+    // Other tables to consider:
+    // field_config
+    // field_config_instance
+
+    // First Step to moving data out of profile_org_bio into field_bio:
+    // Get all of the user ids with a value in profile_org_bio:
+    $result = $query->entityCondition('entity_type', 'user')
+        ->entityCondition('bundle', 'user')
+        //~ ->fieldCondition('field_profile_org_bio', 'value', '', '!=')
+        ->range(0, $limit)
+        ->execute();
 
     // If we have results
     if (isset($result['user'])) {
@@ -78,10 +114,10 @@ function drush_nyccamp_migrate_user_fields() {
     }
 
   // Delete the profile_org_bio field
-  field_delete_field('field_profile_org_bio');
+  //~ field_delete_field('field_profile_org_bio');
+  //*** I'd rather make the delete field a separate command, just to be conservative.
 
   drush_log('Marked field_profile_org_bio for deletion', 'success');
-  field_purge_batch(100);
+  //~ field_purge_batch(100);
   drush_log('Purged deleted fields.', 'success');
-
 }
